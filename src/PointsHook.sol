@@ -55,7 +55,7 @@ contract PointsHook is BaseHook, ERC20 {
         bytes calldata hookData
     ) external override onlyPoolManager returns (bytes4, int128) {
         // If this is not an ETH-TOKEN pool with this hook attached, ignore
-        if (!key.currency0.isAddressZero()) return (this.afterSwap.selector, 0);
+        // if (!key.currency0.isAddressZero()) return (this.afterSwap.selector, 0);
 
         // We only mint points if user is buying TOKEN with ETH
         if (!swapParams.zeroForOne) return (this.afterSwap.selector, 0);
@@ -87,8 +87,8 @@ contract PointsHook is BaseHook, ERC20 {
         bytes calldata hookData
     ) external override onlyPoolManager returns (bytes4, BalanceDelta) {
         // If this is not an ETH-TOKEN pool with this hook attached, ignore
-        if (!key.currency0.isAddressZero())
-            return (this.afterSwap.selector, delta);
+        // if (!key.currency0.isAddressZero())
+        //     return (this.afterSwap.selector, delta);
 
         // Mint points equivalent to how much ETH they're adding in liquidity
         uint256 pointsForAddingLiquidity = uint256(int256(-delta.amount0()));
