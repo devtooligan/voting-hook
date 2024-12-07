@@ -4,9 +4,8 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 
 import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
-import {PoolSwapTest} from "v4-core/test/PoolSwapTest.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {PoolManager} from "v4-core/PoolManager.sol";
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 
@@ -14,31 +13,27 @@ import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 
 import {Hooks} from "v4-core/libraries/Hooks.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
-import {SqrtPriceMath} from "v4-core/libraries/SqrtPriceMath.sol";
 import {LiquidityAmounts} from "@uniswap/v4-core/test/utils/LiquidityAmounts.sol";
-import { Wrouter } from "src/Wrouter.sol";
-import "forge-std/console.sol";
-import {PointsHook} from "../src/PointsHook.sol";
+import {Wrouter} from "src/Wrouter.sol";
+import {PointsHook} from "src/PointsHook.sol";
 
-    contract WrappedToken is ERC20 {
-        ERC20 public token;
+contract WrappedToken is ERC20 {
+    ERC20 public token;
 
-        constructor(address _token, string memory name, string memory symbol) ERC20(name, symbol) {
-            token = ERC20(_token);
-        }
-
-        function mint(address to, uint256 amount) public {
-            token.transferFrom(msg.sender, address(this), amount);
-            _mint(to, amount);
-        }
-
-        function burn(address from, uint256 amount) public {
-            token.transfer(msg.sender, amount);
-            _burn(from, amount);
-        }
+    constructor(address _token, string memory name, string memory symbol) ERC20(name, symbol) {
+        token = ERC20(_token);
     }
 
+    function mint(address to, uint256 amount) public {
+        token.transferFrom(msg.sender, address(this), amount);
+        _mint(to, amount);
+    }
 
+    function burn(address from, uint256 amount) public {
+        token.transfer(msg.sender, amount);
+        _burn(from, amount);
+    }
+}
 
 contract TestPointsHook is Test, Deployers {
     using CurrencyLibrary for Currency;
@@ -81,14 +76,8 @@ contract TestPointsHook is Test, Deployers {
         token1.mint(address(1), 1000 ether);
 
         // Deploy hook to an address that has the proper flags set
-        uint160 flags = uint160(
-            Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG
-        );
-        deployCodeTo(
-            "PointsHook.sol",
-            abi.encode(manager, "Points Token", "TEST_POINTS"),
-            address(flags)
-        );
+        uint160 flags = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+        deployCodeTo("PointsHook.sol", abi.encode(manager, "Points Token", "TEST_POINTS"), address(flags));
 
         // Deploy our hook
         hook = PointsHook(address(flags));
@@ -99,7 +88,7 @@ contract TestPointsHook is Test, Deployers {
         token1.approve(address(wrouter), type(uint256).max);
 
         // Initialize a pool
-        (key, ) = initPool(
+        (key,) = initPool(
             wtokenCurrency0, // Currency 0 = TOKEN
             wtokenCurrency1, // Currency 1 = TOKEN1
             hook, // Hook Contract
@@ -118,16 +107,9 @@ contract TestPointsHook is Test, Deployers {
         uint160 sqrtPriceAtTickUpper = TickMath.getSqrtPriceAtTick(60);
 
         uint256 ethToAdd = 0.1 ether;
-        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            ethToAdd
-        );
-        uint256 tokenToAdd = LiquidityAmounts.getAmount1ForLiquidity(
-            sqrtPriceAtTickLower,
-            SQRT_PRICE_1_1,
-            liquidityDelta
-        );
+        uint128 liquidityDelta = LiquidityAmounts.getLiquidityForAmount0(sqrtPriceAtTickLower, SQRT_PRICE_1_1, ethToAdd);
+        uint256 tokenToAdd =
+            LiquidityAmounts.getAmount1ForLiquidity(sqrtPriceAtTickLower, SQRT_PRICE_1_1, liquidityDelta);
 
         wrouter.modifyLiquidity{value: ethToAdd}(
             key,
@@ -147,7 +129,6 @@ contract TestPointsHook is Test, Deployers {
             0.001 ether // error margin for precision loss
         );
 
-
         // Now we swap
         // We will swap 0.001 ether for tokens
         // We should get 20% of 0.001 * 10**18 points
@@ -159,19 +140,13 @@ contract TestPointsHook is Test, Deployers {
                 amountSpecified: -0.001 ether, // Exact input for output swap
                 sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
-            Wrouter.TestSettings({
-                takeClaims: false,
-                settleUsingBurn: false
-            }),
+            Wrouter.TestSettings({takeClaims: false, settleUsingBurn: false}),
             hookData
         );
         uint256 pointsBalanceAfterSwap = hook.balanceOf(address(this));
-        assertEq(
-            pointsBalanceAfterSwap - pointsBalanceAfterAddLiquidity,
-            2 * 10 ** 14
-        );
+        assertEq(pointsBalanceAfterSwap - pointsBalanceAfterAddLiquidity, 2 * 10 ** 14);
 
-        // TODO: Add test for swapping other direction 
+        // TODO: Add test for swapping other direction
         // TODO: Add test for removing liquidity
     }
 }
