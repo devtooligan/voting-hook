@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
@@ -11,7 +10,7 @@ import {PoolKey, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {IFractionalGovernor} from "flexible-voting/interfaces/IFractionalGovernor.sol";
-
+import { StateLibrary } from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 contract DelegatedLiquidityHook is BaseHook {
     using PoolIdLibrary for PoolKey;
     using Checkpoints for Checkpoints.Trace208;
@@ -59,21 +58,50 @@ contract DelegatedLiquidityHook is BaseHook {
         uint160, // sqrtPriceX96
         int24 // tick
     ) external override returns (bytes4 selector) {
-        isGovToken0 = Currency.unwrap(key.currency0) == GOV_TOKEN;
-        // If neither token in the pair is the gov token, revert
-        if (!isGovToken0 && Currency.unwrap(key.currency1) != GOV_TOKEN) {
-            revert("Currency pair does not include governor token");
-        }
+        // todo: fix this logic:
+        // isGovToken0 = Currency.unwrap(key.currency0) == GOV_TOKEN;
+        // // If neither token in the pair is the gov token, revert
+        // if (!isGovToken0 && Currency.unwrap(key.currency1) != GOV_TOKEN) {
+        //     revert("Currency pair does not include governor token");
+        // }
         selector = BaseHook.afterInitialize.selector;
     }
 
-    function afterModifyPosition(
+    function afterAddLiquidity(
         address sender,
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata modifyParams,
+        BalanceDelta delta,
         BalanceDelta,
         bytes calldata
-    ) external override returns (bytes4 selector) {
+    )
+        // bytes calldata
+        external
+        override
+        returns (bytes4 selector, BalanceDelta)
+    {
+        _afterModifyLiquidity(sender, key, modifyParams);
+        return(BaseHook.afterAddLiquidity.selector, delta);
+    }
+
+    function afterRemoveLiquidity(
+                address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata modifyParams,
+        BalanceDelta,
+        BalanceDelta,
+        bytes calldata
+    ) external override returns (bytes4 selector, BalanceDelta) {
+        _afterModifyLiquidity(sender, key, modifyParams);
+        selector = BaseHook.afterAddLiquidity.selector;
+    }
+
+    function _afterModifyLiquidity(
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.ModifyLiquidityParams calldata modifyParams
+    ) internal returns (bytes4 selector) {
+    // ) external override returns (bytes4 selector) {
         bytes32 positionId = keccak256(abi.encodePacked(sender, modifyParams.tickLower, modifyParams.tickUpper));
 
         // Save tickLower & tickUpper into a mapping for this position id
@@ -86,19 +114,16 @@ contract DelegatedLiquidityHook is BaseHook {
             : liquidity + uint256(modifyParams.liquidityDelta);
 
         // checkpoint position liquidity
-        positionLiquidityCheckpoints[positionId].push(liquidityNext);
-
-        // Checkpoint pool price
-        (uint160 sqrtPriceX96,,,) = poolManager.getSlot0(key.toId());
-        priceCheckpoints.push(sqrtPriceX96);
-
+        positionLiquidityCheckpoints[positionId].push(uint48(block.number), uint208(liquidityNext));
+        // Checkpoint pool price StateLibrary.getSlot0(manager, poolId);
+        (uint160 sqrtPriceX96,,,) = StateLibrary.getSlot0(poolManager, key.toId());
+        // (uint160 sqrtPriceX96,,,) = poolManager.getSlot0();
+        priceCheckpoints.push(uint48(block.number), uint208(sqrtPriceX96));
         // Record position for address
         if (seenPosition[positionId] == false) {
             seenPosition[positionId] = true;
             positionsByAddress[sender].push(positionId);
         }
-
-        selector = BaseHook.afterModifyPosition.selector;
     }
 
     function afterSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
@@ -106,8 +131,8 @@ contract DelegatedLiquidityHook is BaseHook {
         override
         returns (bytes4 selector, int128)
     {
-        (uint160 price,,,) = poolManager.getSlot0(key.toId());
-        priceCheckpoints.push(price);
+        (uint160 price,,,) = StateLibrary.getSlot0(poolManager, key.toId());
+        priceCheckpoints.push(uint48(block.timestamp), price);
         selector = BaseHook.afterSwap.selector;
     }
 
@@ -121,12 +146,12 @@ contract DelegatedLiquidityHook is BaseHook {
 
     function getPastBalance(bytes32 positionId, uint256 blockNumber) public view returns (uint256) {
         // TODO: make sure these unchecked casts are safe
-        uint160 price = uint160(priceCheckpoints.getAtProbablyRecentBlock(blockNumber));
-        uint128 liquidity = uint128(positionLiquidityCheckpoints[positionId].getAtProbablyRecentBlock(blockNumber));
+        uint160 price = uint160(priceCheckpoints.upperLookupRecent(uint48(blockNumber)));
+        uint128 liquidity = uint128(positionLiquidityCheckpoints[positionId].upperLookupRecent(uint48(blockNumber)));
         (uint256 token0, uint256 token1) = LiquidityAmounts.getAmountsForLiquidity(
             price,
-            TickMath.getSqrtRatioAtTick(positionTicks[positionId][0]),
-            TickMath.getSqrtRatioAtTick(positionTicks[positionId][1]),
+            TickMath.getSqrtPriceAtTick(positionTicks[positionId][0]),
+            TickMath.getSqrtPriceAtTick(positionTicks[positionId][1]),
             liquidity
         );
         return isGovToken0 ? token0 : token1;
