@@ -12,7 +12,7 @@ import {IHooks} from "v4-core/interfaces/IHooks.sol";
 import {CurrencyLibrary, Currency} from "v4-core/types/Currency.sol";
 import {PoolKey, PoolId, PoolIdLibrary} from "v4-core/types/PoolId.sol";
 import {PoolManager} from "v4-core/PoolManager.sol";
-import {DelegatedLiquidityHook} from "src/DelegatedLiquidityHook.sol";
+import {TokenBalancesTrackerHook} from "src/TokenBalancesTrackerHook.sol";
 import {Deployers} from "@uniswap/v4-core/test/utils/Deployers.sol";
 import {PoolModifyLiquidityTest} from "@uniswap/v4-core/src/test/PoolModifyLiquidityTest.sol";
 import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
@@ -27,8 +27,8 @@ import {HooksTest} from "v4-core/test/HooksTest.sol";
 import {HookMiner} from "./utils/HookMiner.sol";
 import { VotingRouter } from "src/VotingRouter.sol";
 
-// contract DelegatedLiquidityHookTest is HookTest, Deployers {
-contract DelegatedLiquidityHookTest is Test, Deployers {
+// contract TokenBalancesTrackerHookTest is HookTest, Deployers {
+contract TokenBalancesTrackerHookTest is Test, Deployers {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
 
@@ -45,7 +45,7 @@ contract DelegatedLiquidityHookTest is Test, Deployers {
     MockERC20 erc20;
     GovernorTokenMock erc20Votes;
     GovernorFlexibleVotingMock gov;
-    DelegatedLiquidityHook hook;
+    TokenBalancesTrackerHook hook;
     PoolKey poolKey;
     PoolId poolId;
     //   DelegatedFlexClientHarness client;
@@ -76,9 +76,9 @@ contract DelegatedLiquidityHookTest is Test, Deployers {
                 Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
                 Hooks.AFTER_INITIALIZE_FLAG
         );
-        deployCodeTo("DelegatedLiquidityHook.sol", abi.encode(manager, address(gov)), address(flags));
+        deployCodeTo("TokenBalancesTrackerHook.sol", abi.encode(manager, address(gov)), address(flags));
 
-        hook = DelegatedLiquidityHook(address(flags));
+        hook = TokenBalancesTrackerHook(address(flags));
 
         voting_router = new VotingRouter(manager, address(erc20Votes), address(erc20), true, true, address(gov), address(hook));
 
@@ -184,7 +184,7 @@ contract DelegatedLiquidityHookTest is Test, Deployers {
     // }
 }
 
-contract AddLiquidity is DelegatedLiquidityHookTest {
+contract AddLiquidity is TokenBalancesTrackerHookTest {
     using PoolIdLibrary for PoolKey;
 
     // function test_castVoteAbstain() public {

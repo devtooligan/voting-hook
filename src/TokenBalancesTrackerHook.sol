@@ -11,7 +11,7 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {IFractionalGovernor} from "flexible-voting/interfaces/IFractionalGovernor.sol";
 import { StateLibrary } from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
-contract DelegatedLiquidityHook is BaseHook {
+contract TokenBalancesTrackerHook is BaseHook {
     using PoolIdLibrary for PoolKey;
     using Checkpoints for Checkpoints.Trace208;
 

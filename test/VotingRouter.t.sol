@@ -16,9 +16,8 @@ import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {LiquidityAmounts} from "@uniswap/v4-core/test/utils/LiquidityAmounts.sol";
 import { WrapRouter } from "src/WrapRouter.sol";
 import { VotingRouter } from "src/VotingRouter.sol";
-import {PointsHook} from "src/PointsHook.sol";
 import {FlexVotingClient} from "flexible-voting/FlexVotingClient.sol";
-import {DelegatedLiquidityHook} from "src/DelegatedLiquidityHook.sol";
+import {TokenBalancesTrackerHook} from "src/TokenBalancesTrackerHook.sol";
 contract WrappedToken is ERC20 {
     ERC20 public token;
 
@@ -38,8 +37,7 @@ contract WrappedToken is ERC20 {
     }
 }
 
-// contract TestPointsHook is Test, Deployers {
-contract TestPointsHook is Test, Deployers {
+contract VotingRouterHook is Test, Deployers {
     using CurrencyLibrary for Currency;
     GovernorFlexibleVotingMock gov;
 
@@ -54,7 +52,7 @@ contract TestPointsHook is Test, Deployers {
     Currency wtokenCurrency0;
     Currency wtokenCurrency1;
 
-    DelegatedLiquidityHook hook;
+    TokenBalancesTrackerHook hook;
     VotingRouter voting_router;
 
     function setUp() public {
@@ -69,9 +67,9 @@ contract TestPointsHook is Test, Deployers {
                 Hooks.AFTER_REMOVE_LIQUIDITY_FLAG |
                 Hooks.AFTER_INITIALIZE_FLAG
         );
-        deployCodeTo("DelegatedLiquidityHook.sol", abi.encode(manager, address(gov)), address(flags));
+        deployCodeTo("TokenBalancesTrackerHook.sol", abi.encode(manager, address(gov)), address(flags));
 
-        hook = DelegatedLiquidityHook(address(flags));
+        hook = TokenBalancesTrackerHook(address(flags));
 
 
         voting_router = new VotingRouter(
@@ -137,10 +135,6 @@ contract TestPointsHook is Test, Deployers {
             }),
             hookData
         );
-        // Now we swap
-        // We will swap 0.001 ether for tokens
-        // We should get 20% of 0.001 * 10**18 points
-        // = 2 * 10**14
         voting_router.swap(
             key,
             IPoolManager.SwapParams({

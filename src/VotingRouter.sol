@@ -4,10 +4,10 @@ pragma solidity ^0.8.24;
 import { WrapRouter } from "src/WrapRouter.sol";
 import { FlexVotingClient } from "flexible-voting/FlexVotingClient.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import { DelegatedLiquidityHook } from "src/DelegatedLiquidityHook.sol";
+import { TokenBalancesTrackerHook } from "src/TokenBalancesTrackerHook.sol";
 
 contract VotingRouter is WrapRouter, FlexVotingClient {
-    DelegatedLiquidityHook immutable hook;
+    TokenBalancesTrackerHook immutable hook;
     constructor(
         IPoolManager _poolManager,
         address _tokenA,
@@ -17,7 +17,7 @@ contract VotingRouter is WrapRouter, FlexVotingClient {
         address gov,
         address _hook
     ) WrapRouter(_poolManager, _tokenA, _tokenB, isWrappedTokenA, isWrappedTokenB) FlexVotingClient(gov) {
-        hook = DelegatedLiquidityHook(_hook);
+        hook = TokenBalancesTrackerHook(_hook);
     }
 
     function _rawBalanceOf(address _user) internal view virtual override returns (uint208) {

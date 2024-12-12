@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 import {console2 as console} from "forge-std/console2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
-import {WrappedToken} from "test/PointsHook.t.sol";
+import {WrappedToken} from "test/VotingRouter.t.sol";
 import {CurrencyLibrary, Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
