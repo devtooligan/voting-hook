@@ -27,7 +27,6 @@ The voting-hook:
 3. Integrates with governance systems while tokens remain in the pool
 
 # Technical Implementation
-# Technical Implementation
 
 ## Architecture
 The voting-hook system consists of three main components that work together to enable LP governance participation:
